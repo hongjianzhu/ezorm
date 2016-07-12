@@ -1,9 +1,14 @@
 {{define "struct"}}package {{.Package}}
 {{$obj := .}}
-{{if eq .Db "mongo"}}
-import "gopkg.in/mgo.v2/bson"
-{{end}}
-import "time"
+import (
+	"bytes"
+	"encoding/gob"
+	"time"
+
+	{{if eq .Db "mongo"}}
+	"gopkg.in/mgo.v2/bson"
+	{{end}}
+)
 
 var _ time.Time
 
@@ -22,6 +27,7 @@ type {{.Name}} struct {
 {{- if and (ne .Db "") (ne .Db "mssql")}}
 	isNew bool
 {{- end}}
+	__meta__ *{{.Name}} // Use pointer, default value is nil
 }
 
 func (p *{{.Name}}) GetNameSpace() string {
@@ -30,6 +36,29 @@ func (p *{{.Name}}) GetNameSpace() string {
 
 func (p *{{.Name}}) GetClassName() string {
 	return "{{.Name}}"
+}
+
+func (p *{{.Name}}) GetMeta() *{{.Name}} {
+	return p.__meta__
+}
+
+func (p *{{.Name}}) Snapshot() error {
+	var buf bytes.Buffer
+
+	enc := gob.NewEncoder(&buf)
+	dec := gob.NewDecoder(&buf)
+
+	enc.Encode(p)
+
+	var meta {{.Name}}
+	err := dec.Decode(&meta)
+	if err != nil {
+		return err
+	}
+
+	p.__meta__ = mata
+
+	return nil
 }
 
 type _{{.Name}}Mgr struct {
